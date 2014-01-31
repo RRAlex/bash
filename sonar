@@ -1,0 +1,106 @@
+#!/bin/sh
+#
+# sonar - Displays signal levels from connected Wi-Fi stations
+#
+# Copyright (C) 2012 Philippe Gauthier <philippe.gauthier@deuxpi.ca>
+# Copyright (C) 2012 Mathieu Lutfy <mathieu@bidon.ca>
+# Copyright (C) 2012 Alexandre Guedon <alex@twd.su>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+###
+
+# dBm values from AirOS 5.5 linked to color values for signal strength
+NOISE="-96" # Noise floor
+LOW="-80"
+MED="-73"
+HIGH="-65"
+NOISECOL="\033[0;31m"
+LOWCOL="\033[0;33m"
+MEDCOL="\033[0;32m"
+HIGHCOL="\033[1;32m"
+RESET="\033[0m"
+BOLD="\033[1m"
+
+# Test if UBNT LEDs are present
+LED_PATH=/sys/devices/platform/leds-gpio/leds
+if [ -d $LED_PATH ]; then LEDS="1"; echo "LEDs supported"; fi
+
+set_led() {
+    # Set light value, usually 0=off, 255=on
+    LIGHT=$2
+    if [ $LEDS -eq 1 ]; then
+        case $1 in
+        1)  echo $LIGHT > $LED_PATH/ubnt:red:link1/brightness ;;
+        2)  echo $LIGHT > $LED_PATH/ubnt:orange:link2/brightness ;;
+        3)  echo $LIGHT > $LED_PATH/ubnt:green:link3/brightness ;;
+        4)  echo $LIGHT > $LED_PATH/ubnt:green:link4/brightness ;;
+        esac
+    fi
+}
+
+turn_all_leds_off() {
+    for i in 1 2 3 4 
+    do 
+        set_led $i 0
+    done
+}
+# Cleanup after signal
+on_exit() { 
+    if [ $LEDS -eq 1 ]; then
+    	echo -ne "\nResetting LEDs to off: "
+    	turn_all_leds_off
+    	echo "Done"
+    fi
+    exit
+}
+trap 'on_exit' 1 2 3 15
+
+# Loop to scan for and display signals
+while (true); do
+    turn_all_leds_off
+    for iface in $(iw dev | grep Interface | cut -f2 -d" "); do
+        iw $iface station dump \
+        | while read line ; do
+            if echo $line | grep -q "Station"; then
+                mac=$(echo $line | cut -f2 -d" ")
+                host=$(grep -si $mac /etc/ethers|cut -f2 -d" ")
+            fi
+            if echo $line | grep -q "signal:"; then
+                signal=$( echo "$line" | sed 's/.*signal:[\ \t]*\([-0-9]*\).*/\1/' )
+                # Quick fix for no signal
+                if [ $signal -eq 0 ] ; then  signal="-100"; fi 
+                # We've seen a signal, so turn at least the RED led on
+                COL=$NOISECOL
+                set_led 1 255
+                if [ $signal -ge $LOW ]
+                    then COL=$LOWCOL
+                    set_led 2 255
+                fi
+                if [ $signal -ge $MED ]
+                    then COL=$MEDCOL
+                    set_led 3 255
+                fi
+                if [ $signal -ge $HIGH ]
+                    then COL=$HIGHCOL
+                    set_led 4 255
+                fi
+                # Hash for unique color from names in ethers
+                HOSTCOL="\033[3"$(echo $(( $(echo -n "$host"|md5sum|tr a-f 0-5|cut -f1 -d" "| head -c 10) % 8 )) )"m"
+                echo -e "${BOLD}${mac}${RESET} (on ${BOLD}${iface}${RESET}) ${COL}${signal} dBm${RESET} ${HOSTCOL}${host}${RESET}"
+            fi
+        done
+    done
+    sleep 1
+    echo
+done
