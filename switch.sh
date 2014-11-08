@@ -14,8 +14,8 @@
 ################################################################
 # Simple script to control a Ubiquiti mFi-LD from bash
 
-IP=192.168.1.135
-USER=root
+IP=192.168.1.100
+USER=ubnt
 PASS=ubnt
 SESSIONID=01234567890123456789012345678901
 
