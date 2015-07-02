@@ -94,7 +94,7 @@ case $1 in
     dimdown)
         DIMLVL=$(curl -k -s -b "AIROS_SESSIONID=${SESSIONID}" https://${IP}/sensors | sed 's/.*"dimmer_level":\([0-9]*\).*/\1/')
         echo "Starting value : ${DIMLVL} %"
-        for i in $(seq 1 ${DIMLVL} | tac); do
+        for i in $(seq 1 2 ${DIMLVL} | tac); do
             curl -k -X PUT -d "output=1&dimmer_level=${i}" -b "AIROS_SESSIONID=${SESSIONID}" https://${IP}/sensors/1 > /dev/null 2>&1
             echo -ne "Dim level: ${i}\r"
         done
@@ -107,7 +107,7 @@ case $1 in
     dimup)
         DIMLVL=$(curl -k -s -b "AIROS_SESSIONID=${SESSIONID}" https://${IP}/sensors | sed 's/.*"dimmer_level":\([0-9]*\).*/\1/')
         echo "Starting value : ${DIMLVL} %"
-        for i in $(seq ${DIMLVL} 100); do
+        for i in $(seq ${DIMLVL} 2 99); do
             curl -k -X PUT -d "output=1&dimmer_level=${i}" -b "AIROS_SESSIONID=${SESSIONID}" https://${IP}/sensors/1 > /dev/null 2>&1
             echo -ne "Dim level: ${i}\r"
         done
