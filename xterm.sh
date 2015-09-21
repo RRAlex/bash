@@ -47,7 +47,6 @@ echo -e "                                                                       
 echo -e "                                                                                "
 echo -e "                                                                                "
 echo -e "                                                                                [0;37;40m"
-echo -e "]2;Lithium server\[1A"
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #echo -ne "\033[2J" # CLEAR
 XWIN=`xdpyinfo |grep dimensions|awk {'print $2'}|sed s/x.*//`
